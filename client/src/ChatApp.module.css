@@ -1,0 +1,143 @@
+/* ChatApp.module.css */
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 24px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f9fafb;
+    color: #1f2937;
+  }
+  
+  .header {
+    margin-bottom: 24px;
+    text-align: center;
+    user-select: none;
+  }
+  
+  .header h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #4f46e5; /* Indigo-700 */
+  }
+  
+  .controls {
+    margin-bottom: 24px;
+  }
+  
+  .main {
+    flex: 1;
+    display: flex;
+    gap: 24px;
+    overflow: hidden;
+  }
+  
+  .sidebar {
+    width: 280px;
+    background-color: #eef2ff; /* Indigo-50 */
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 4px 8px rgb(143 155 179 / 0.2);
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .sidebar h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: #3730a3; /* Indigo-900 */
+  }
+  
+  .chatSection {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: #fff;
+    border-radius: 12px;
+    border: 1px solid #d1d5db; /* Gray-300 */
+    box-shadow: 0 8px 16px rgb(0 0 0 / 0.05);
+    overflow: hidden;
+  }
+  
+  .chatContainer {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+    background-color: #ffffff;
+  }
+  
+  .chatContainer::-webkit-scrollbar {
+    width: 10px;
+  }
+  
+  .chatContainer::-webkit-scrollbar-track {
+    background: #f3f4f6;
+    border-radius: 10px;
+  }
+  
+  .chatContainer::-webkit-scrollbar-thumb {
+    background-color: #6366f1; /* Indigo-500 */
+    border-radius: 10px;
+    border: 2px solid #f3f4f6;
+  }
+  
+  .chatPlaceholder {
+    margin-top: 100px;
+    text-align: center;
+    color: #9ca3af; /* Gray-400 */
+    font-size: 1rem;
+  }
+  
+  .inputSection {
+    border-top: 1px solid #d1d5db;
+    padding: 16px;
+  }
+  
+  .footer {
+    margin-top: 20px;
+    text-align: center;
+  }
+  
+  .reportButton {
+    font-size: 0.875rem;
+    color: #dc2626; /* Red-600 */
+    text-decoration: underline;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    transition: color 0.2s ease-in-out;
+  }
+  
+  .reportButton:hover,
+  .reportButton:focus {
+    color: #b91c1c; /* Red-800 */
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.5);
+    border-radius: 4px;
+  }
+  :global(body) {
+    --bg-color: #fff;
+    --text-color: #000;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+  }
+  
+  :global(body[data-theme="dark"]) {
+    --bg-color: #121212;
+    --text-color: #eee;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+  }
+  .container {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+  }
+  
+  
+  
