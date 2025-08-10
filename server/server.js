@@ -4,7 +4,6 @@ import dotenv from "dotenv";
 import axios from "axios";
 import NodeCache from "node-cache";
 import OpenAI from "openai";
-import yahooFinance from "yahoo-finance2";
 
 dotenv.config();
 
@@ -16,19 +15,8 @@ const cache = new NodeCache({ stdTTL: 3600 });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 
-// In-memory store for user favorites (keyed by userId)
-const userFavorites = new Map();
-
-// Mapping common names or wrong inputs to valid ticker symbols
-const SYMBOL_MAP = {
-  APPLE: "AAPL",
-  GOOGLE: "GOOG",
-  ALPHABET: "GOOG",
-  TESLA: "TSLA",
-  MICROSOFT: "MSFT",
-  AMAZON: "AMZN",
-  // Add more mappings as needed
-};
+// Dublin districts list for simple validation / normalization
+const DUBLIN_DISTRICTS = Array.from({ length: 24 }, (_, i) => `Dublin ${i + 1}`);
 
 // 🌍 Detect language
 async function detectLanguage(text) {
@@ -80,83 +68,41 @@ async function translateText(text, target = "en") {
   }
 }
 
-// Get current stock price + 6 months history
-async function getStockData(symbol) {
-  try {
-    // Normalize symbol
-    symbol = SYMBOL_MAP[symbol.toUpperCase()] || symbol.toUpperCase();
-
-    // Current quote
-    const quote = await yahooFinance.quote(symbol);
-
-    // Calculate 6 months ago date
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-    const period1 = sixMonthsAgo.toISOString().split("T")[0];
-    const period2 = new Date().toISOString().split("T")[0];
-
-    // Historical daily data for last 6 months
-    const history = await yahooFinance.historical(symbol, {
-      period1,
-      period2,
-      interval: "1d",
-    });
-
-    return {
-      symbol,
-      currentPrice: quote.regularMarketPrice,
-      history, // array of daily OHLCV data
-    };
-  } catch (err) {
-    console.error(`Failed to fetch stock data for ${symbol}:`, err);
-    return null;
+// Simple helper to validate/normalize area names
+function normalizeArea(area) {
+  if (!area) return "Dublin 1";
+  const trimmed = String(area).trim();
+  if (DUBLIN_DISTRICTS.some((d) => d.toLowerCase() === trimmed.toLowerCase())) {
+    const num = parseInt(trimmed.replace(/[^0-9]/g, ""), 10);
+    return `Dublin ${isNaN(num) ? 1 : num}`;
   }
+  // Fallback to capitalized free text, but keep "Dublin" in name
+  return trimmed.toLowerCase().includes("dublin") ? trimmed : `${trimmed}, Dublin`;
 }
 
-// Routes to manage user favorites
-app.post("/api/stocks/favorites", (req, res) => {
-  const { userId, symbol } = req.body;
-  if (!userId || !symbol) {
-    return res.status(400).json({ error: "Missing userId or symbol" });
-  }
+// Geocode via OpenStreetMap Nominatim
+async function geocodeQuery(query, limit = 10) {
+  const q = String(query || "Dublin, Ireland");
+  const cacheKey = `geocode:${q}:${limit}`;
+  if (cache.has(cacheKey)) return cache.get(cacheKey);
+  const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(
+    q
+  )}&limit=${limit}`;
+  const res = await axios.get(url, {
+    headers: { "User-Agent": "chatQA-travel-bot/1.0 (demo)" },
+  });
+  cache.set(cacheKey, res.data);
+  return res.data;
+}
 
-  let favs = userFavorites.get(userId) || [];
-  const sym = symbol.toUpperCase();
-  if (!favs.includes(sym)) favs.push(sym);
-  userFavorites.set(userId, favs);
-  res.json({ favorites: favs });
-});
-
-app.get("/api/stocks/favorites/:userId", (req, res) => {
-  const favs = userFavorites.get(req.params.userId) || [];
-  res.json({ favorites: favs });
-});
-
-// Route to get stock data
-app.get("/api/stocks/:symbol", async (req, res) => {
-  try {
-    let symbol = req.params.symbol.toUpperCase();
-    symbol = SYMBOL_MAP[symbol] || symbol;
-
-    const data = await getStockData(symbol);
-    if (!data) {
-      return res.status(404).json({ error: `Stock data not found for symbol ${symbol}` });
-    }
-    res.json(data);
-  } catch (error) {
-    console.error(`Error fetching stock data for ${req.params.symbol}:`, error);
-    res.status(500).json({ error: "Failed to fetch stock data" });
-  }
-});
-
-// Chat endpoint with stock trading logic
+// Chat endpoint: Ireland travel concierge
 app.post("/api/chat", async (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
 
   try {
-    let { messages, userLang } = req.body;
+    let { messages, userLang, area } = req.body;
 
     console.log("📥 Incoming request body:");
     console.dir(req.body, { depth: null });
@@ -182,31 +128,30 @@ app.post("/api/chat", async (req, res) => {
       userLang = await detectLanguage(latestMessage);
     }
 
-    // Detect if user asks about trading a stock like "trade AAPL"
-    const tradeAskMatch = latestMessage.match(/trade\s+([A-Za-z]{1,5})/i);
-    if (tradeAskMatch) {
-      const symbol = tradeAskMatch[1].toUpperCase();
-      const stockData = await getStockData(symbol);
-      if (stockData) {
-        // Summarize last 30 days closing prices (customizable)
-        const last30Days = stockData.history
-          .slice(-30)
-          .map((day) => `${day.date.split("T")[0]}: close=${day.close.toFixed(2)}`)
-          .join("\n");
+    const normalizedArea = normalizeArea(area || "Dublin");
 
-        // Add system prompt with stock data for AI context
-        messages.push({
-          role: "system",
-          content: `You are a financial assistant. The user wants to know if it's a good time to trade ${symbol} based on recent data.
-Here are the last 30 days closing prices:
-${last30Days}
+    // Prepend a system instruction to be an Ireland travel concierge
+    const systemInstruction = {
+      role: "system",
+      content:
+        `You are "Ireland Travel Concierge", a friendly, QUICK and concise assistant focused ONLY on travel in Ireland. ` +
+        `Default location is ${normalizedArea}. If the user mentions Dublin districts (Dublin 1..24), tailor results to that district.\n\n` +
+        `IMPORTANT: Be FAST and CONCISE. Give direct, actionable answers.\n\n` +
+        `Guidelines:\n` +
+        `- Provide curated lists for: hotels, restaurants, pubs/nightlife, attractions, day trips, and events.\n` +
+        `- Keep each item SHORT: name, 1-line reason, and link. Use Google Maps or official sites.\n` +
+        `- For lists, provide exactly 5-8 items maximum.\n` +
+        `- Use bullet points for quick scanning.\n` +
+        `- Include handy quick links when relevant: \n` +
+        `  Hotels: https://www.booking.com/searchresults.html?ss=${encodeURIComponent(normalizedArea + ", Ireland")} \n` +
+        `  Things to do: https://www.getyourguide.com/s/?q=${encodeURIComponent(normalizedArea)}&lc=l184 \n` +
+        `  Food delivery: https://www.just-eat.ie/ or https://deliveroo.ie/ \n` +
+        `  Transport: https://www.transportforireland.ie/plan-a-journey/ \n` +
+        `- Refuse non-Ireland travel topics.\n` +
+        `- Be unbiased and don't fabricate prices. When unsure, provide search links.`,
+    };
 
-Current price: $${stockData.currentPrice.toFixed(2)}
-
-Please provide a brief analysis considering the 6 months price history and current price.`,
-        });
-      }
-    }
+    messages = [systemInstruction, ...messages];
 
     // Translate user messages to English for OpenAI
     const translatedMessages = await Promise.all(
@@ -225,11 +170,13 @@ Please provide a brief analysis considering the 6 months price history and curre
     console.log("🧪 Final messages to OpenAI:");
     console.dir(translatedMessages, { depth: null });
 
-    // OpenAI chat completion streaming
+    // OpenAI chat completion streaming - optimized for speed
     const stream = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini", // Faster model for quicker responses
       messages: translatedMessages,
       stream: true,
+      max_tokens: 800, // Limit response length for faster generation
+      temperature: 0.7, // Balanced creativity and consistency
     });
 
     let fullResponse = "";
@@ -248,6 +195,83 @@ Please provide a brief analysis considering the 6 months price history and curre
     res.write("ERROR: " + (error?.message || "Unknown error"));
   } finally {
     res.end();
+  }
+});
+
+// Structured itinerary generation
+app.post("/api/itinerary", async (req, res) => {
+  try {
+    const { area, days = 3, startDate, preferences = {}, userLang = "en" } = req.body || {};
+    const normalizedArea = normalizeArea(area || "Dublin");
+
+    const sys = {
+      role: "system",
+      content:
+        `You are a meticulous Ireland trip planner. Create a JSON itinerary only, no extra text. ` +
+        `Focus on ${normalizedArea}. Use walking/public transport by default. Avoid exact prices.`,
+    };
+    const user = {
+      role: "user",
+      content:
+        `Please create a ${days}-day itinerary starting ${startDate || "soon"} for ${normalizedArea}.\n` +
+        `Preferences: ${JSON.stringify(preferences)}\n` +
+        `Respond with STRICT JSON matching this TypeScript type:\n` +
+        `type Itinerary = {\n` +
+        `  title: string;\n` +
+        `  summary: string;\n` +
+        `  days: Array<{ day: number; title: string; description: string; items: Array<{ time?: string; name: string; note?: string; address?: string; map_url?: string; official_url?: string; }> }>;\n` +
+        `  booking_suggestions: Array<{ label: string; url: string }>;\n` +
+        `};\n` +
+        `Rules: Provide valid JSON only. Do not include markdown fences. Use Google Maps links for map_url when possible. Use official URLs if known, otherwise omit.`,
+    };
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [sys, user],
+      temperature: 0.7,
+    });
+
+    const raw = completion.choices?.[0]?.message?.content?.trim() || "";
+
+    let json = null;
+    try {
+      json = JSON.parse(raw);
+    } catch {
+      // Attempt to extract JSON block if model added text
+      const match = raw.match(/\{[\s\S]*\}$/);
+      if (match) {
+        json = JSON.parse(match[0]);
+      }
+    }
+
+    if (!json) {
+      return res.status(200).json({ raw });
+    }
+
+    // Optional translate title/summary for user language
+    if (userLang && userLang !== "en") {
+      try {
+        json.title = (await translateText(json.title, userLang)) || json.title;
+        json.summary = (await translateText(json.summary, userLang)) || json.summary;
+      } catch {}
+    }
+
+    res.json(json);
+  } catch (err) {
+    console.error("/api/itinerary error", err);
+    res.status(500).json({ error: "Failed to generate itinerary" });
+  }
+});
+
+// Simple geocode proxy
+app.get("/api/geo/geocode", async (req, res) => {
+  try {
+    const q = req.query.q || "Dublin, Ireland";
+    const results = await geocodeQuery(q, Number(req.query.limit) || 10);
+    res.json(results);
+  } catch (err) {
+    console.error("/api/geo/geocode error", err);
+    res.status(500).json({ error: "Failed to geocode" });
   }
 });
 

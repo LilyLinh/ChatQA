@@ -1,47 +1,44 @@
+import ReactMarkdown from "react-markdown";
+import styles from "./ChatBubble.module.css";
+
 export default function ChatBubble({ role, content }) {
-    const isUser = role === "user";
+  const isUser = role === "user";
   
-    return (
-      <>
-        <div
-          className={`bubble ${isUser ? "userBubble" : "assistantBubble"}`}
-          role={isUser ? "article" : "note"}
-          aria-label={isUser ? "User message" : "Assistant message"}
-        >
-          <p className="message">{content}</p>
+  return (
+    <div className={`${styles.bubble} ${isUser ? styles.userBubble : styles.assistantBubble}`}>
+      <div className={styles.content}>
+        {isUser ? (
+          <p className={styles.message}>{content}</p>
+        ) : (
+          <div className={styles.markdown}>
+            <ReactMarkdown
+              components={{
+                a: ({ href, children }) => (
+                  <a href={href} target="_blank" rel="noopener noreferrer" className={styles.link}>
+                    {children}
+                  </a>
+                ),
+                h1: ({ children }) => <h1 className={styles.h1}>{children}</h1>,
+                h2: ({ children }) => <h2 className={styles.h2}>{children}</h2>,
+                h3: ({ children }) => <h3 className={styles.h3}>{children}</h3>,
+                ul: ({ children }) => <ul className={styles.ul}>{children}</ul>,
+                ol: ({ children }) => <ol className={styles.ol}>{children}</ol>,
+                li: ({ children }) => <li className={styles.li}>{children}</li>,
+                p: ({ children }) => <p className={styles.p}>{children}</p>,
+                code: ({ children }) => <code className={styles.code}>{children}</code>,
+                strong: ({ children }) => <strong className={styles.strong}>{children}</strong>,
+              }}
+            >
+              {content}
+            </ReactMarkdown>
+          </div>
+        )}
+      </div>
+      {!isUser && (
+        <div className={styles.avatar}>
+          🇮🇪
         </div>
-  
-        <style jsx>{`
-          .bubble {
-            max-width: 75%;
-            padding: 14px 18px;
-            margin-bottom: 12px;
-            border-radius: 18px;
-            word-break: break-word;
-            line-height: 1.5;
-            font-size: 1rem;
-            box-shadow: 0 2px 5px rgb(0 0 0 / 0.05);
-            display: flex;
-          }
-          .userBubble {
-            background-color: #4f46e5;
-            color: white;
-            align-self: flex-end;
-            border-bottom-right-radius: 4px;
-            justify-content: flex-end;
-          }
-          .assistantBubble {
-            background-color: #e0e7ff;
-            color: #1e293b;
-            align-self: flex-start;
-            border-bottom-left-radius: 4px;
-            justify-content: flex-start;
-          }
-          .message {
-            margin: 0;
-          }
-        `}</style>
-      </>
-    );
-  }
-  
+      )}
+    </div>
+  );
+}

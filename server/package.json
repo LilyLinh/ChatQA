@@ -8,5 +8,9 @@
     "node-cache": "^5.1.2",
     "openai": "^5.10.2",
     "yahoo-finance2": "^2.13.3"
+
+  },
+  "scripts": {
+    "start": "node server.js"
   }
 }

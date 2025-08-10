@@ -1,81 +1,72 @@
+import styles from "./MessageInput.module.css";
+
 export default function MessageInput({ message, onChange, onSend, loading }) {
-    const handleKeyDown = (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        if (!loading) onSend();
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (!loading) onSend();
+    }
+  };
+
+  const handleSuggestionClick = (suggestionText) => {
+    onChange({ target: { value: suggestionText } });
+    // Auto-focus the textarea
+    setTimeout(() => {
+      const textarea = document.querySelector('textarea[aria-label="Chat message input"]');
+      if (textarea) {
+        textarea.focus();
       }
-    };
-  
-    return (
-      <>
-        <div className="inputWrapper">
-          <textarea
-            className="textarea"
-            value={message}
-            onChange={onChange}
-            onKeyDown={handleKeyDown}
-            rows={2}
-            placeholder="Type your message here..."
-            aria-label="Chat message input"
-            disabled={loading}
-          />
+    }, 100);
+  };
+
+  return (
+    <div className={styles.inputContainer}>
+      <div className={styles.inputWrapper}>
+        <textarea
+          className={styles.textarea}
+          value={message}
+          onChange={onChange}
+          onKeyDown={handleKeyDown}
+          rows={3}
+          placeholder="Ask me about hotels, restaurants, attractions, or anything else about traveling in Ireland..."
+          aria-label="Chat message input"
+          disabled={loading}
+        />
+        <div className={styles.actions}>
           <button
-            className="sendButton"
+            className={styles.suggestionBtn}
+            type="button"
+            onClick={() => handleSuggestionClick("Show me a romantic 2-day itinerary")}
+            disabled={loading}
+          >
+            💑 Romantic trip
+          </button>
+          <button
+            className={styles.suggestionBtn}
+            type="button"
+            onClick={() => handleSuggestionClick("Best pubs with live traditional music")}
+            disabled={loading}
+          >
+            🎵 Traditional music
+          </button>
+          <button
+            className={styles.sendBtn}
             onClick={onSend}
             disabled={loading || message.trim().length === 0}
             aria-label="Send message"
             type="button"
           >
-            {loading ? "Sending..." : "Send"}
+            {loading ? (
+              <span className={styles.loading}>
+                <span className={styles.spinner}></span>
+                Sending...
+              </span>
+            ) : (
+              <span>Send ✈️</span>
+            )}
           </button>
         </div>
-  
-        <style jsx>{`
-          .inputWrapper {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-          }
-          .textarea {
-            flex: 1;
-            resize: none;
-            padding: 10px 14px;
-            border-radius: 10px;
-            border: 1.5px solid #d1d5db;
-            font-size: 1rem;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #1f2937;
-            transition: border-color 0.2s ease-in-out;
-            min-height: 48px;
-          }
-          .textarea:focus {
-            border-color: #4f46e5;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.5);
-          }
-          .sendButton {
-            background-color: #4f46e5;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            padding: 10px 20px;
-            font-weight: 700;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: background-color 0.2s ease-in-out;
-          }
-          .sendButton:disabled {
-            background-color: #a5b4fc;
-            cursor: not-allowed;
-          }
-          .sendButton:hover:not(:disabled),
-          .sendButton:focus:not(:disabled) {
-            background-color: #4338ca;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.6);
-          }
-        `}</style>
-      </>
-    );
-  }
-  
+      </div>
+    </div>
+  );
+}

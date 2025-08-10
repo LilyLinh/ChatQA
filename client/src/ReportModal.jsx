@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import styles from "./ReportModal.module.css";
 
 export default function ReportModal({ show, onClose, onSubmit }) {
   const [reportText, setReportText] = useState("");
@@ -16,52 +17,44 @@ export default function ReportModal({ show, onClose, onSubmit }) {
   };
 
   return (
-    <>
-      <div
-        className="modal fade show"
-        style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}
-        tabIndex="-1"
-        role="dialog"
-        aria-modal="true"
-      >
-        <div className="modal-dialog modal-dialog-centered" role="document">
-          <div className="modal-content shadow">
-            <div className="modal-header">
-              <h5 className="modal-title">Report an Issue</h5>
-              <button
-                type="button"
-                className="btn-close"
-                aria-label="Close"
-                onClick={onClose}
-              ></button>
-            </div>
-            <form onSubmit={handleSubmit}>
-              <div className="modal-body">
-                <textarea
-                  className="form-control"
-                  rows={5}
-                  value={reportText}
-                  onChange={(e) => setReportText(e.target.value)}
-                  placeholder="Describe the issue or feedback here..."
-                  required
-                />
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={onClose}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-danger">
-                  Submit
-                </button>
-              </div>
-            </form>
-          </div>
+    <div className={styles.modal}>
+      <div className={styles.modalContent}>
+        <div className={styles.modalHeader}>
+          <h3>Report an Issue</h3>
+          <button
+            type="button"
+            className={styles.closeBtn}
+            aria-label="Close"
+            onClick={onClose}
+          >
+            ×
+          </button>
         </div>
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <div className={styles.formBody}>
+            <textarea
+              className={styles.textarea}
+              rows={5}
+              value={reportText}
+              onChange={(e) => setReportText(e.target.value)}
+              placeholder="Describe the issue or provide feedback here..."
+              required
+            />
+          </div>
+          <div className={styles.formFooter}>
+            <button
+              type="button"
+              className={styles.secondaryBtn}
+              onClick={onClose}
+            >
+              Cancel
+            </button>
+            <button type="submit" className={styles.primaryBtn}>
+              Submit Report
+            </button>
+          </div>
+        </form>
       </div>
-    </>
+    </div>
   );
 }
