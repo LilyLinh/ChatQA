@@ -3,7 +3,7 @@ import ChatBubble from "./ChatBubble";
 import MessageInput from "./MessageInput";
 import styles from "./ChatApp.module.css";
 
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = "https://stockai-5sf6.onrender.com";
 const DUBLIN_DISTRICTS = Array.from({ length: 24 }, (_, i) => `Dublin ${i + 1}`);
 
 export default function ChatApp() {
